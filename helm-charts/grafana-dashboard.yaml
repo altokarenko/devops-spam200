@@ -1,0 +1,221 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-spam2000
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  spam2000-dashboard.json: |
+    {
+      "id": null,
+      "title": "Spam2000 Monitoring",
+      "tags": ["spam2000", "application"],
+      "timezone": "browser",
+      "schemaVersion": 16,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+          {
+            "id": 1,
+            "title": "Random Gauge 1",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+            "targets": [
+              {
+                "expr": "random_gauge_1{job=\"spam2000\"}",
+                "legendFormat": "{{country}} - {{name}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "short", "label": "Value"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 2,
+            "title": "Random Gauge 2",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+            "targets": [
+              {
+                "expr": "random_gauge_2{job=\"spam2000\"}",
+                "legendFormat": "{{country}} - {{name}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "short", "label": "Value"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 3,
+            "title": "Random Gauge 3",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+            "targets": [
+              {
+                "expr": "random_gauge_3{job=\"spam2000\"}",
+                "legendFormat": "{{country}} - {{name}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "short", "label": "Value"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 4,
+            "title": "Name Gauge",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+            "targets": [
+              {
+                "expr": "name_gauge{job=\"spam2000\"}",
+                "legendFormat": "{{country}} - {{name}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "short", "label": "Value"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 5,
+            "title": "Random Histogram",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+            "targets": [
+              {
+                "expr": "rate(random_histogram_bucket{job=\"spam2000\"}[5m])",
+                "legendFormat": "le={{le}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "short", "label": "Rate"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 6,
+            "title": "Random Histogram (Count & Sum)",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+            "targets": [
+              {
+                "expr": "rate(random_histogram_count{job=\"spam2000\"}[5m])",
+                "legendFormat": "Count",
+                "refId": "A"
+              },
+              {
+                "expr": "rate(random_histogram_sum{job=\"spam2000\"}[5m])",
+                "legendFormat": "Sum",
+                "refId": "B"
+              }
+            ],
+            "yaxes": [
+              {"format": "short", "label": "Rate"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 7,
+            "title": "Ordered Histogram",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+            "targets": [
+              {
+                "expr": "rate(ordered_histogram_bucket{job=\"spam2000\"}[5m])",
+                "legendFormat": "le={{le}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "short", "label": "Rate"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 8,
+            "title": "Ordered Histogram (Count & Sum)",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+            "targets": [
+              {
+                "expr": "rate(ordered_histogram_count{job=\"spam2000\"}[5m])",
+                "legendFormat": "Count",
+                "refId": "A"
+              },
+              {
+                "expr": "rate(ordered_histogram_sum{job=\"spam2000\"}[5m])",
+                "legendFormat": "Sum",
+                "refId": "B"
+              }
+            ],
+            "yaxes": [
+              {"format": "short", "label": "Rate"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 9,
+            "title": "Total Metrics Count",
+            "type": "stat",
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 32},
+            "targets": [
+              {
+                "expr": "count(random_gauge_1{job=\"spam2000\"})",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "title": "Random Gauge 1 Count"
+            }
+          },
+          {
+            "id": 10,
+            "title": "Metrics by Country",
+            "type": "table",
+            "gridPos": {"h": 8, "w": 12, "x": 6, "y": 32},
+            "targets": [
+              {
+                "expr": "count by (country)(random_gauge_1{job=\"spam2000\"})",
+                "format": "table",
+                "instant": true,
+                "refId": "A"
+              }
+            ],
+            "transformations": [
+              {
+                "id": "organize",
+                "options": {
+                  "excludeByName": {},
+                  "indexByName": {},
+                  "renameByName": {
+                    "country": "Country",
+                    "Value": "Count"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": ["10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+      },
+      "editable": true,
+      "graphTooltip": 0,
+      "links": []
+    }
+
