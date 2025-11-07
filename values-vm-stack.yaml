@@ -1,0 +1,50 @@
+# Victoria Metrics k8s-stack Helm Chart Values
+
+vmoperator:
+  enabled: true
+
+vmsingle:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 30081
+
+vmagent:
+  enabled: true
+  spec:
+    remoteWrite:
+      - url: http://vmsingle-vm-victoria-metrics-k8s-stack:8428/api/v1/write
+    selectAllByDefault: true
+    scrapeInterval: 30s
+
+prometheus-node-exporter:
+  enabled: false
+
+kube-state-metrics:
+  enabled: false
+
+grafana:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 30082
+  adminPassword: admin
+  persistence:
+    enabled: false
+  plugins:
+    - victoriametrics-metrics-datasource
+
+# Configure default datasources for Grafana
+defaultDatasources:
+  extra:
+    - name: VictoriaMetrics
+      type: victoriametrics-metrics-datasource
+      url: http://vmsingle-vm-victoria-metrics-k8s-stack:8428
+      uid: VictoriaMetrics
+      access: proxy
+      version: 1
+      orgId: 1
+      isDefault: false
+      editable: true
+      jsonData: {}
+

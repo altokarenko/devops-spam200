@@ -1,0 +1,43 @@
+# ArgoCD Helm Chart Values
+# Customization for ArgoCD deployment
+
+server:
+  # Expose ArgoCD server UI as NodePort
+  service:
+    type: NodePort
+    nodePort: 30083
+  
+  # Additional server configuration
+  extraArgs:
+    - --insecure  # Allow HTTP access (for development/testing)
+  
+  # Disable TLS for development
+  config:
+    url: ""
+
+# Disable ingress (using NodePort instead)
+ingress:
+  enabled: false
+
+# Controller configuration
+controller:
+  replicas: 1
+
+# Repo server configuration
+repoServer:
+  replicas: 1
+
+# Application controller configuration
+applicationSet:
+  enabled: false
+
+# Resource limits (set per component if needed)
+# server:
+#   resources:
+#     limits:
+#       cpu: 500m
+#       memory: 512Mi
+#     requests:
+#       cpu: 100m
+#       memory: 128Mi
+

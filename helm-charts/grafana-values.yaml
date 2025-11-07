@@ -7,8 +7,7 @@ adminPassword: admin
 persistence:
   enabled: false
 
-# Install VictoriaMetrics datasource plugin
-env:
+ env:
   GF_INSTALL_PLUGINS: "victoriametrics-metrics-datasource"
 
 datasources:
