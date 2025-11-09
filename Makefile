@@ -1,4 +1,4 @@
-.PHONY: all start-minikube check-helm-version install-crds deploy-monitoring deploy-app deploy-argocd configure-argocd-app expose-services get-urls get-argocd-url status clean help
+.PHONY: all start-minikube check-helm-version install-crds deploy-monitoring deploy-app deploy-argocd configure-argocd-app expose-services get-urls status clean help
 
 # ArgoCD Git repository URL (set via environment variable or Makefile variable)
 ARGOCD_GIT_REPO_URL ?= https://github.com/altokarenko/devops-spam200.git
@@ -94,12 +94,32 @@ deploy-argocd: check-helm-version
 	@helm repo add argo https://argoproj.github.io/argo-helm || true
 	@helm repo update
 	@kubectl create namespace argocd || true
-	@echo "Installing ArgoCD..."
+	@echo "Cleaning up any existing ArgoCD installation..."
+	@helm uninstall argocd -n argocd 2>/dev/null || true
+	@kubectl delete svc argocd-server -n argocd 2>/dev/null || true
+	@sleep 3
+	@echo "Installing ArgoCD as ClusterIP first..."
 	@helm upgrade --install argocd argo/argo-cd \
 		-n argocd \
 		-f argocd-values.yaml \
-		--wait \
-		--timeout=600s
+		--timeout=600s || true
+	@echo "Waiting for ArgoCD server service to be created..."
+	@for i in 1 2 3 4 5; do \
+		if kubectl get svc argocd-server -n argocd >/dev/null 2>&1; then \
+			break; \
+		fi; \
+		echo "Waiting for service... (attempt $$i/5)"; \
+		sleep 2; \
+	done
+	@echo "Patching ArgoCD server service to use NodePort 30083..."
+	@kubectl patch svc argocd-server -n argocd -p '{"spec":{"type":"NodePort","ports":[{"name":"http","port":80,"targetPort":8080,"nodePort":30083,"protocol":"TCP"},{"name":"https","port":443,"targetPort":8080,"nodePort":30084,"protocol":"TCP"}]}}' || \
+	(echo "Trying alternative patch method..." && \
+	kubectl get svc argocd-server -n argocd -o yaml | sed 's/type: ClusterIP/type: NodePort/' | \
+	sed '/nodePort:/d' | \
+	sed '/- name: http/a\    nodePort: 30083' | \
+	sed '/- name: https/a\    nodePort: 30084' | \
+	kubectl apply -f -) || \
+	echo "Warning: Could not patch service. You may need to manually set NodePort."
 	@echo "Waiting for ArgoCD server to be ready..."
 	@kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s || true
 	@echo "ArgoCD deployed successfully"
@@ -117,15 +137,29 @@ configure-argocd-app: deploy-argocd
 	@echo "Using Git repository: $(ARGOCD_GIT_REPO_URL)"
 	@ARGOCD_GIT_REPO_URL="$(ARGOCD_GIT_REPO_URL)" envsubst < argocd-apps/spam2000-application.yaml | kubectl apply -f -
 	@echo "ArgoCD Application configured successfully"
+	@echo ""
+	@echo "GitOps Configuration:"
+	@echo "  - ArgoCD will monitor: $(ARGOCD_GIT_REPO_URL)"
+	@echo "  - Helm chart path: helm-charts/spam2000"
+	@echo "  - Changes in Git will be automatically synced to the cluster"
+	@echo "  - Modify values.yaml in Git to update application configuration"
+	@echo ""
 	@echo "Waiting for ArgoCD to sync the application..."
 	@sleep 10
-	@kubectl wait --for=condition=healthy application/spam2000 -n argocd --timeout=300s || echo "Application sync may take longer..."
+	@kubectl wait --for=condition=healthy application/spam2000 -n argocd --timeout=300s || echo "Application sync may take longer. Check status with: kubectl get application spam2000 -n argocd"
+	@echo ""
+	@echo "To check application status:"
+	@echo "  kubectl get application spam2000 -n argocd"
+	@echo "  kubectl describe application spam2000 -n argocd"
 
 # Ensure all services are exposed as NodePort
 expose-services:
 	@echo "Ensuring services are exposed as NodePort..."
 	@kubectl patch svc grafana -n monitoring -p '{"spec": {"type": "NodePort", "ports": [{"port": 80, "targetPort": 3000, "nodePort": 30082, "protocol": "TCP", "name": "http"}]}}' || true
 	@kubectl patch svc spam2000 -p '{"spec": {"type": "NodePort", "ports": [{"port": 80, "targetPort": 80, "nodePort": 30080, "protocol": "TCP", "name": "http"}]}}' || true
+	@if kubectl get svc argocd-server -n argocd >/dev/null 2>&1; then \
+		echo "ArgoCD server service already configured as NodePort"; \
+	fi
 	@echo "Services exposed"
 
 # Get access URLs
@@ -140,32 +174,21 @@ get-urls:
 	echo "Application (spam2000): http://$$MINIKUBE_IP:30080"; \
 	echo "VictoriaMetrics: http://$$MINIKUBE_IP:30081"; \
 	echo "Grafana (vm-grafana): http://$$MINIKUBE_IP:30082"; \
-	echo ""; \
+	if kubectl get namespace argocd >/dev/null 2>&1 && kubectl get svc argocd-server -n argocd >/dev/null 2>&1; then \
+		echo "ArgoCD UI: http://$$MINIKUBE_IP:30083"; \
+	fi
+	@echo ""; \
 	echo "Grafana credentials:"; \
 	echo "  Username: admin"; \
 	echo "  Password: admin"; \
-	echo "=========================================="
-
-# Get ArgoCD access URL and credentials
-get-argocd-url:
-	@echo ""
+	if kubectl get namespace argocd >/dev/null 2>&1 && kubectl get secret argocd-initial-admin-secret -n argocd >/dev/null 2>&1; then \
+		echo ""; \
+		echo "ArgoCD credentials:"; \
+		echo "  Username: admin"; \
+		ARGOCD_PASSWORD=$$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || echo "Password not available yet"); \
+		echo "  Password: $$ARGOCD_PASSWORD"; \
+	fi
 	@echo "=========================================="
-	@echo "ArgoCD Access Information:"
-	@echo "=========================================="
-	@MINIKUBE_IP=$$(minikube ip); \
-	echo "Minikube IP: $$MINIKUBE_IP"; \
-	echo ""; \
-	echo "ArgoCD UI: http://$$MINIKUBE_IP:30083"; \
-	echo ""; \
-	echo "Getting ArgoCD admin password..."; \
-	@ARGOCD_PASSWORD=$$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d 2>/dev/null || echo "Password not available yet. Wait a few moments and try again."); \
-	echo "ArgoCD credentials:"; \
-	echo "  Username: admin"; \
-	echo "  Password: $$ARGOCD_PASSWORD"; \
-	echo ""; \
-	echo "To retrieve password later, run:"; \
-	echo "  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"; \
-	echo "=========================================="
 
 # Show deployment status
 status:
@@ -184,6 +207,11 @@ status:
 		echo ""; \
 		echo "ArgoCD Applications:"; \
 		kubectl get applications -n argocd; \
+		if kubectl get application spam2000 -n argocd >/dev/null 2>&1; then \
+			echo ""; \
+			echo "spam2000 Application Status:"; \
+			kubectl get application spam2000 -n argocd -o wide; \
+		fi; \
 		echo ""; \
 	fi
 	@echo "Services:"
@@ -221,8 +249,7 @@ help:
 	@echo "  deploy-argocd        - Deploy ArgoCD GitOps controller"
 	@echo "  configure-argocd-app - Configure ArgoCD Application for spam2000"
 	@echo "  expose-services      - Ensure all services are NodePort"
-	@echo "  get-urls             - Display access URLs"
-	@echo "  get-argocd-url       - Display ArgoCD UI access URL and credentials"
+	@echo "  get-urls             - Display access URLs and credentials for all services"
 	@echo "  status               - Show deployment status"
 	@echo "  clean                - Remove all deployments"
 	@echo "  help                 - Show this help message"

@@ -6,7 +6,6 @@ global:
     replica: '0'
 
 scrape_configs:
-  # Scrape Kubernetes pods with annotation prometheus.io/scrape=true
   - job_name: 'kubernetes-pods'
     kubernetes_sd_configs:
       - role: pod

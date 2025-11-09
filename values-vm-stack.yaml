@@ -1,5 +1,3 @@
-# Victoria Metrics k8s-stack Helm Chart Values
-
 vmoperator:
   enabled: true
 
@@ -34,7 +32,6 @@ grafana:
   plugins:
     - victoriametrics-metrics-datasource
 
-# Configure default datasources for Grafana
 defaultDatasources:
   extra:
     - name: VictoriaMetrics
@@ -47,4 +44,3 @@ defaultDatasources:
       isDefault: false
       editable: true
       jsonData: {}
-

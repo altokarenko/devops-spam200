@@ -21,7 +21,6 @@ datasources:
         isDefault: true
         editable: true
 
-# Enable sidecar for automatic dashboard discovery from ConfigMaps
 sidecar:
   dashboards:
     enabled: true

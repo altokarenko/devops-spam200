@@ -64,4 +64,3 @@ spec:
     name: http
   selector:
     app: victoria-metrics
-
