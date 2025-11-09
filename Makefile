@@ -271,11 +271,18 @@ status:
 
 clean:
 	@echo "Cleaning up deployments..."
-	@helm uninstall spam2000 -n default || true
+	@echo "Deleting ArgoCD Application (this will remove spam2000 resources)..."
+	@kubectl delete application spam2000 -n argocd 2>/dev/null || true
+	@sleep 3
+	@echo "Removing spam2000 resources directly (in case not managed by ArgoCD)..."
+	@kubectl delete deployment spam2000 -n default 2>/dev/null || true
+	@kubectl delete svc spam2000 -n default 2>/dev/null || true
+	@kubectl delete servicemonitor spam2000 -n default 2>/dev/null || true
+	@echo "Trying to uninstall Helm release (if it exists)..."
+	@helm uninstall spam2000 -n default 2>/dev/null || echo "No Helm release found for spam2000 (this is normal if managed by ArgoCD)"
 	@helm uninstall vm -n monitoring || true
 	@helm uninstall argocd -n argocd || true
 	@kubectl delete -f helm-charts/grafana-dashboard.yaml 2>/dev/null || true
-	@kubectl delete application spam2000 -n argocd 2>/dev/null || true
 	@kubectl delete namespace monitoring || true
 	@kubectl delete namespace argocd || true
 	@rm -f .grafana-password
