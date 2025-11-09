@@ -1,0 +1,10 @@
+# Grafana password file (contains sensitive information)
+.grafana-password
+
+# Kubernetes config files
+*.kubeconfig
+
+# Temporary files
+*.tmp
+*.log
+
